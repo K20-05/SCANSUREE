@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+﻿import React, { useRef, useState } from "react";
 import QRCode from "qrcode";
 import QrReader from "react-qr-scanner";
 
@@ -21,11 +21,27 @@ const demoProducts = {
 };
 
 function App() {
+  const qrRef = useRef(null);
   const [productId, setProductId] = useState("");
   const [qrCode, setQrCode] = useState("");
   const [productData, setProductData] = useState(null);
   const [verified, setVerified] = useState(null);
-  const [statusMessage, setStatusMessage] = useState("Demo mode active (no MetaMask required).");
+  const [statusMessage, setStatusMessage] = useState("");
+
+  const requestCameraPermission = async () => {
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setStatusMessage("Camera API is not supported in this browser.");
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      stream.getTracks().forEach((track) => track.stop());
+      setStatusMessage("Camera permission granted.");
+    } catch (error) {
+      console.error(error);
+      setStatusMessage("Camera permission denied. Please allow camera in browser settings.");
+    }
+  };
 
   const verifyProduct = () => {
     const cleanId = productId.trim().toUpperCase();
@@ -58,7 +74,6 @@ function App() {
   const handleScan = (result) => {
     if (!result) return;
 
-    // Different scanner builds return either a string or an object with text.
     const rawValue =
       typeof result === "string"
         ? result
@@ -94,22 +109,33 @@ function App() {
       {qrCode && (
         <div>
           <h3>Generated QR Code:</h3>
-          <img src={qrCode} alt="QR" width="200" />
+          <img src={qrCode} alt="QR" width="220" />
         </div>
       )}
 
       <h3>Scan Product QR</h3>
-      <div style={{ width: "250px", margin: "auto" }}>
+      <button onClick={requestCameraPermission} style={{ marginBottom: "10px" }}>
+        Enable Camera
+      </button>
+      <div style={{ width: "280px", margin: "auto" }}>
         <QrReader
+          ref={qrRef}
           onScan={handleScan}
           onError={(error) => {
             console.error(error);
-            setStatusMessage("Camera/scan error. Allow camera and keep QR steady.");
           }}
-          delay={300}
+          delay={200}
           constraints={{ facingMode: "environment" }}
+          legacyMode
         />
       </div>
+
+      <button
+        onClick={() => qrRef.current?.openImageDialog?.()}
+        style={{ marginTop: "10px" }}
+      >
+        Scan from Image
+      </button>
 
       {statusMessage && <p style={{ marginTop: "12px", color: "#333" }}>{statusMessage}</p>}
 
